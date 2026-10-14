@@ -2,16 +2,18 @@
 Claude Fable 5 on Amazon Bedrock - Adaptive thinking + effort control (Converse API)
 Ref: https://docs.aws.amazon.com/bedrock/latest/userguide/claude-messages-adaptive-thinking.html
 
-Fable 5: adaptive thinking is ALWAYS ON and cannot be disabled.
-You don't need to pass `thinking` at all; what you tune is `output_config.effort`:
+Fable 5: adaptive thinking is ALWAYS ON and cannot be disabled (per model
+card; the exact error returned for "disabled" or "enabled"+budget_tokens is
+not stated there [待确认]).
+You don't need to pass `thinking` at all; what you tune is `output_config.effort`.
 
-  low    - minimal thinking, fastest, cheapest; good for simple tasks
-  medium - moderate thinking; may skip thinking on simple queries
-  high   - (default) always thinks; deep reasoning
-  max    - unconstrained thinking depth; hardest problems only
+The Fable 5 model card only says "effort level is configurable"; the accepted
+values and the default are NOT stated there [待确认]. The effort value below is
+a demo value, not a confirmed per-model rule. (Fable 5.1 documents
+low/medium/high/xhigh/max with default high - see fable51_messages_runtime.py.)
 
 IMPORTANT: `effort` lives inside a separate `output_config` object,
-NOT inside `thinking` (placing it in `thinking` -> ValidationException).
+NOT inside `thinking`.
 """
 
 import boto3
@@ -41,7 +43,7 @@ response = client.converse(
     # Claude-specific fields go through additionalModelRequestFields.
     additionalModelRequestFields={
         "thinking": {"type": "adaptive"},     # optional on Fable 5 (always on anyway)
-        "output_config": {"effort": "high"},  # low | medium | high | max
+        "output_config": {"effort": "high"},  # 示例值，取值/默认待确认
     },
 )
 

@@ -1,0 +1,27 @@
+{
+  "name": "bedrock-claude-call",
+  "description": "Claude on Amazon Bedrock 示例脚本集（CLI，无常驻服务）。入口为 test_all.py：--syntax-only 不发起网络调用；去掉该参数将使用默认 AWS 凭证链运行 live 测试（受限/网关模型 SKIP）。",
+  "install": [
+    {
+      "command": "pip install -r requirements.txt",
+      "cwd": "."
+    }
+  ],
+  "processes": [
+    {
+      "name": "syntax-check",
+      "command": "python test_all.py --syntax-only",
+      "cwd": ".",
+      "entry": true,
+      "long_running": false
+    },
+    {
+      "name": "live-tests",
+      "command": "python test_all.py",
+      "cwd": ".",
+      "entry": false,
+      "long_running": false,
+      "requires": "AWS credentials with Bedrock model access (default credential chain, e.g. AWS_PROFILE / AWS_REGION)"
+    }
+  ]
+}

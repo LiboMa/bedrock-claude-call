@@ -5,15 +5,15 @@ Ref: https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-c
 Auth: standard AWS credential chain, or a Bedrock API key via
       AWS_BEARER_TOKEN_BEDROCK.
 
-NOTE: Fable 5 requires a one-time account opt-in to provider data sharing:
-      aws bedrock put-account-data-retention --mode provider_data_share
+NOTE: Fable 5 requires the account data retention mode to be `aws_review`
+      in the Region:
+      aws bedrock put-account-data-retention --mode aws_review
 """
 
 import boto3
 
-# Geo (US) cross-region inference profile. Alternatives:
-#   anthropic.claude-fable-5          in-region (us-east-1 / eu-north-1 only)
-#   eu.anthropic.claude-fable-5       Geo: EU
+# bedrock-runtime has no in-Region option for Fable 5 - use an inference profile:
+#   us.anthropic.claude-fable-5       Geo: US
 #   global.anthropic.claude-fable-5   Global cross-region routing
 MODEL_ID = "us.anthropic.claude-fable-5"
 

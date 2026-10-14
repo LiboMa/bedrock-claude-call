@@ -4,9 +4,11 @@ Test harness for ALL Anthropic Claude models on Amazon Bedrock.
 Two layers of checking:
   1. Syntax check  - py_compile every example script.
   2. Live API test - one short request per model/route using the standard
-                     AWS credential chain. Gated models (Mythos 5) and models
-                     missing from your account report SKIP/FAIL without
-                     aborting the run.
+                     AWS credential chain. Restricted models (Mythos 5.1:
+                     gated; Mythos 5: Preview, needs provider_data_share)
+                     and older models report SKIP on failure; other models
+                     missing from your account report FAIL without aborting
+                     the run.
 
 Run:
   python test_all.py                 # syntax + live
@@ -18,6 +20,10 @@ import subprocess
 import sys
 
 SCRIPTS = [
+    "claude55_family.py",
+    "fable51_messages_runtime.py",
+    "mythos51_converse.py",
+    "opus5_sonnet5_converse.py",
     "fable5_converse.py",
     "fable5_effort.py",
     "fable5_streaming.py",
@@ -31,9 +37,13 @@ SCRIPTS = [
     "sonnet46_adaptive.py",
     "sonnet45_extended_thinking.py",
     "haiku45_converse.py",
+    "legacy_models_converse.py",
 ]
 
 REGION = "us-east-1"
+# Room for adaptive thinking, which is on by default (or always on) for the
+# 5.x / 5.5 / Fable / Mythos models, so a short probe still returns text.
+PROBE_MAX_TOKENS = 1024
 
 
 def syntax_check() -> bool:
@@ -62,7 +72,7 @@ def test_converse(model_id: str) -> tuple[bool, str]:
     response = client.converse(
         modelId=model_id,
         messages=[{"role": "user", "content": [{"text": "Say hello in one word."}]}],
-        inferenceConfig={"maxTokens": 64},
+        inferenceConfig={"maxTokens": PROBE_MAX_TOKENS},
     )
     text = "".join(
         b["text"] for b in response["output"]["message"]["content"] if "text" in b
@@ -79,7 +89,7 @@ def test_invoke(model_id: str) -> tuple[bool, str]:
         body=json.dumps(
             {
                 "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 64,
+                "max_tokens": PROBE_MAX_TOKENS,
                 "messages": [{"role": "user", "content": "Say hello in one word."}],
             }
         ),
@@ -95,7 +105,7 @@ def test_mantle(model_id: str) -> tuple[bool, str]:
     client = AnthropicBedrockMantle(aws_region=REGION)
     message = client.messages.create(
         model=model_id,
-        max_tokens=64,
+        max_tokens=PROBE_MAX_TOKENS,
         messages=[{"role": "user", "content": "Say hello in one word."}],
     )
     text = "".join(b.text for b in message.content if b.type == "text")
@@ -110,7 +120,7 @@ def test_adaptive_effort(model_id: str, effort: str = "low") -> tuple[bool, str]
     response = client.converse(
         modelId=model_id,
         messages=[{"role": "user", "content": [{"text": "What is 2 + 2?"}]}],
-        inferenceConfig={"maxTokens": 256},
+        inferenceConfig={"maxTokens": PROBE_MAX_TOKENS},
         additionalModelRequestFields={
             "thinking": {"type": "adaptive"},
             "output_config": {"effort": effort},
@@ -122,18 +132,16 @@ def test_adaptive_effort(model_id: str, effort: str = "low") -> tuple[bool, str]
     return bool(text), text.strip()[:80]
 
 
-def test_budget_thinking(model_id: str) -> tuple[bool, str]:
-    """Older extended-thinking shape (enabled + budget_tokens) via Converse."""
+def test_adaptive(model_id: str) -> tuple[bool, str]:
+    """Adaptive thinking without effort via Converse (Opus 4.7 / 4.8, Fable 5)."""
     import boto3
 
     client = boto3.client("bedrock-runtime", region_name=REGION)
     response = client.converse(
         modelId=model_id,
         messages=[{"role": "user", "content": [{"text": "What is 17 * 23?"}]}],
-        inferenceConfig={"maxTokens": 4096},
-        additionalModelRequestFields={
-            "thinking": {"type": "enabled", "budget_tokens": 1024},
-        },
+        inferenceConfig={"maxTokens": PROBE_MAX_TOKENS},
+        additionalModelRequestFields={"thinking": {"type": "adaptive"}},
     )
     text = "".join(
         b["text"] for b in response["output"]["message"]["content"] if "text" in b
@@ -141,26 +149,75 @@ def test_budget_thinking(model_id: str) -> tuple[bool, str]:
     return bool(text), text.strip()[:80]
 
 
+def test_runtime_messages(model_id: str) -> tuple[bool, str]:
+    """Anthropic Messages API on bedrock-runtime (.../anthropic + Bedrock API key)."""
+    from anthropic import Anthropic
+    from aws_bedrock_token_generator import provide_token
+
+    client = Anthropic(
+        base_url=f"https://bedrock-runtime.{REGION}.amazonaws.com/anthropic",
+        api_key=provide_token(region=REGION),
+    )
+    message = client.messages.create(
+        model=model_id,
+        max_tokens=PROBE_MAX_TOKENS,
+        messages=[{"role": "user", "content": "Say hello in one word."}],
+    )
+    text = "".join(b.text for b in message.content if b.type == "text")
+    return bool(text), text.strip()[:80]
+
+
+# Model-ID substrings whose failures are reported as SKIP instead of FAIL.
+# First match wins, so "mythos-5-1" must come before "mythos-5".
+SKIP_ON_FAILURE = {
+    "mythos-5-1": "gated (Mythos 5.1 runtime API rows also unconfirmed)",
+    "mythos-5": "Preview; needs provider_data_share data retention",
+    "opus-4-1": "older model (lifecycle unconfirmed)",
+    "sonnet-4-2025": "older model (lifecycle unconfirmed)",
+    "claude-3-haiku": "older model (lifecycle unconfirmed)",
+}
+
+
 def live_tests() -> bool:
     print("\n=== Live API tests ===\n")
     targets = [
+        # Claude 5.5 family
+        ("adaptive", "us.anthropic.claude-haiku-5-5", test_adaptive_effort),
+        ("mantle  ", "anthropic.claude-haiku-5-5", test_mantle),
+        ("adaptive", "us.anthropic.claude-sonnet-5-5", test_adaptive_effort),
+        ("adaptive", "us.anthropic.claude-opus-5-5", test_adaptive_effort),
+        ("mantle  ", "anthropic.claude-opus-5-5", test_mantle),
         # Claude 5 generation
+        ("converse", "us.anthropic.claude-fable-5-1", test_converse),
+        ("messages", "us.anthropic.claude-fable-5-1", test_runtime_messages),
+        # Mythos 5.1: gated, and Converse support is unconfirmed -> SKIP on failure
+        ("converse", "us.anthropic.claude-mythos-5-1", test_converse),
+        ("converse", "us.anthropic.claude-opus-5", test_converse),
+        ("converse", "us.anthropic.claude-sonnet-5", test_converse),
         ("converse", "us.anthropic.claude-fable-5", test_converse),
-        ("adaptive", "us.anthropic.claude-fable-5", test_adaptive_effort),
+        # Fable 5 effort values/default are 待确认 -> probe adaptive without effort
+        ("adaptive", "us.anthropic.claude-fable-5", test_adaptive),
         ("invoke  ", "us.anthropic.claude-fable-5", test_invoke),
         ("mantle  ", "anthropic.claude-fable-5", test_mantle),
-        ("mantle  ", "anthropic.claude-mythos-5", test_mantle),  # gated: may 404
-        # Opus line
+        ("mantle  ", "anthropic.claude-mythos-5", test_mantle),  # Preview, mantle only
+        # Opus 4.x line
         ("converse", "us.anthropic.claude-opus-4-8", test_converse),
         ("mantle  ", "anthropic.claude-opus-4-8", test_mantle),
-        ("converse", "us.anthropic.claude-opus-4-7", test_converse),
-        ("adaptive", "us.anthropic.claude-opus-4-6-v1", test_adaptive_effort),
+        ("adaptive", "us.anthropic.claude-opus-4-7", test_adaptive),
+        # Opus 4.6 / 4.5 and Sonnet 4.x: model cards only say "Reasoning:
+        # Supported" (thinking shape unconfirmed), so live tests send no thinking.
+        ("converse", "us.anthropic.claude-opus-4-6-v1", test_converse),
         ("converse", "us.anthropic.claude-opus-4-5-20251101-v1:0", test_converse),
-        # Sonnet line
-        ("adaptive", "us.anthropic.claude-sonnet-4-6", test_adaptive_effort),
-        ("budget  ", "us.anthropic.claude-sonnet-4-5-20250929-v1:0", test_budget_thinking),
-        # Haiku line
+        # Sonnet 4.x line
+        ("converse", "us.anthropic.claude-sonnet-4-6", test_converse),
+        ("converse", "us.anthropic.claude-sonnet-4-5-20250929-v1:0", test_converse),
+        # Haiku 4.5 (runtime needs a profile; mantle takes the bare ID)
         ("converse", "us.anthropic.claude-haiku-4-5-20251001-v1:0", test_converse),
+        ("mantle  ", "anthropic.claude-haiku-4-5", test_mantle),
+        # Older models (lifecycle dates unconfirmed)
+        ("converse", "us.anthropic.claude-opus-4-1-20250805-v1:0", test_converse),
+        ("converse", "us.anthropic.claude-sonnet-4-20250514-v1:0", test_converse),
+        ("converse", "us.anthropic.claude-3-haiku-20240307-v1:0", test_converse),
     ]
 
     all_ok = True
@@ -170,9 +227,10 @@ def live_tests() -> bool:
             ok, msg = fn(model)
         except Exception as e:
             ok, msg = False, f"{type(e).__name__}: {e}"
-        # Mythos 5 access is allowlisted; don't fail the whole suite on it.
-        if not ok and "mythos" in model:
-            print(f"SKIP (gated) {msg[:100]}")
+        # Restricted (Mythos) and older models don't fail the whole suite.
+        skip = next((why for key, why in SKIP_ON_FAILURE.items() if key in model), None)
+        if not ok and skip:
+            print(f"SKIP ({skip}) {msg[:100]}")
             continue
         all_ok &= ok
         print(f"{'PASS' if ok else 'FAIL'} {msg[:100]}")
