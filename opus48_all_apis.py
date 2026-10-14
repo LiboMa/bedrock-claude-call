@@ -1,20 +1,25 @@
 """
-Claude Opus 4.8 on Amazon Bedrock - one file, all three call paths
+Claude Opus 4.8 on Amazon Bedrock - one file, every supported call path
 Ref: https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-opus-4-8.html
 
-Opus 4.8 (launched 2026-05-28) supports BOTH endpoints and all three APIs:
-  1. Converse      (bedrock-runtime, boto3)  - AWS-native, model-agnostic
-  2. InvokeModel   (bedrock-runtime, boto3)  - raw Anthropic Messages body
-  3. Messages      (bedrock-mantle, anthropic SDK) - first-party API parity
+Opus 4.8 (launched 2026-05-28) supports BOTH endpoints:
+  1. Converse      (bedrock-runtime, boto3)          - AWS-native, model-agnostic
+  2. InvokeModel   (bedrock-runtime, boto3)          - raw Anthropic Messages body
+  3. Messages      (bedrock-runtime, anthropic SDK)  - .../anthropic base URL + API key
+  4. Messages      (bedrock-mantle, anthropic SDK)   - first-party API parity
 
-Same pattern applies to Opus 4.6 / 4.7 - just swap MODEL_ID (see README).
-Opus 4.7+ removed temperature/top_p/top_k - omit them entirely.
+Same pattern applies to Opus 4.7 - just swap MODEL_ID. Opus 4.6 has no
+Mantle endpoint (bedrock-runtime Converse / InvokeModel).
+Thinking: the Opus 4.7 / 4.8 model cards list only thinking.type "adaptive".
+Sampling parameters (temperature/top_p/top_k): restrictions are not stated on
+the cards [待确认] - this example does not send them (recommended: omit).
 """
 
 import json
 
 import boto3
-from anthropic import AnthropicBedrockMantle
+from anthropic import Anthropic, AnthropicBedrockMantle
+from aws_bedrock_token_generator import provide_token
 
 REGION = "us-east-1"
 MODEL_ID = "us.anthropic.claude-opus-4-8"          # bedrock-runtime (geo US profile)
@@ -29,8 +34,7 @@ def via_converse() -> str:
         messages=[{"role": "user", "content": [{"text": PROMPT}]}],
         inferenceConfig={"maxTokens": 1024},
         additionalModelRequestFields={
-            "thinking": {"type": "adaptive"},      # Opus 4.7/4.8: adaptive only
-            "output_config": {"effort": "high"},   # 4.7+ also supports "xhigh"
+            "thinking": {"type": "adaptive"},      # Opus 4.7/4.8: adaptive only (model card)
         },
     )
     return "".join(
@@ -55,6 +59,21 @@ def via_invoke_model() -> str:
     return "".join(b["text"] for b in body["content"] if b["type"] == "text")
 
 
+def via_runtime_messages() -> str:
+    # Short-term Bedrock API key minted from the AWS credential chain.
+    client = Anthropic(
+        base_url=f"https://bedrock-runtime.{REGION}.amazonaws.com/anthropic",
+        api_key=provide_token(region=REGION),
+    )
+    message = client.messages.create(
+        model=MODEL_ID,
+        max_tokens=1024,
+        thinking={"type": "adaptive"},
+        messages=[{"role": "user", "content": PROMPT}],
+    )
+    return "".join(b.text for b in message.content if b.type == "text")
+
+
 def via_mantle() -> str:
     client = AnthropicBedrockMantle(aws_region=REGION)
     message = client.messages.create(
@@ -70,6 +89,7 @@ if __name__ == "__main__":
     for name, fn in [
         ("Converse (bedrock-runtime)", via_converse),
         ("InvokeModel (bedrock-runtime)", via_invoke_model),
+        ("Messages (bedrock-runtime)", via_runtime_messages),
         ("Messages (bedrock-mantle)", via_mantle),
     ]:
         print(f"=== {name} ===")

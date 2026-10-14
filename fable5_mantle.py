@@ -6,6 +6,7 @@ bedrock-mantle is Bedrock's Anthropic-compatible endpoint:
     https://bedrock-mantle.{region}.api.aws/anthropic/v1/messages
 It speaks the exact same Messages API as Anthropic's first-party API, so the
 official `anthropic` SDK works directly via the AnthropicBedrockMantle client.
+Mantle supports ONLY the Messages API (no Converse / InvokeModel).
 
 Prerequisites:
   pip install -U "anthropic[bedrock]"
@@ -14,8 +15,9 @@ Auth (either works):
   export AWS_BEARER_TOKEN_BEDROCK="<your Bedrock API key>"   # simplest
   ... or the standard AWS credential chain (SigV4) is used automatically.
 
-NOTE: on Mantle, the model ID is the bare in-region ID (anthropic.claude-fable-5);
-geo/global inference profile IDs are a bedrock-runtime concept.
+NOTE: on Mantle, the model ID is the bare ID (anthropic.claude-fable-5) and
+Fable 5 is In-Region in us-east-1; geo/global inference profile IDs are a
+bedrock-runtime concept. Data retention mode must be `aws_review`.
 """
 
 from anthropic import AnthropicBedrockMantle
@@ -27,7 +29,7 @@ client = AnthropicBedrockMantle(aws_region="us-east-1")
 with client.messages.stream(
     model="anthropic.claude-fable-5",
     max_tokens=4096,
-    output_config={"effort": "high"},  # low | medium | high | max
+    output_config={"effort": "high"},  # 示例值，取值/默认待确认
     messages=[
         {
             "role": "user",

@@ -11,6 +11,10 @@ Key differences vs Fable 5:
   - bedrock-mantle endpoint ONLY (no bedrock-runtime: no Invoke, no Converse)
   - us-east-1 in-region only (no geo/global inference profiles)
   - Preview / "Beta Service" under AWS Service Terms
+  - data retention mode must be `provider_data_share` (Fable 5 needs `aws_review`)
+
+Its successor Claude Mythos 5.1 lists bedrock-runtime (no Mantle row) on its
+model card; its runtime API rows are unconfirmed (see mythos51_converse.py).
 
 Prerequisites:
   pip install -U "anthropic[bedrock]"
@@ -25,7 +29,7 @@ client = AnthropicBedrockMantle(aws_region="us-east-1")
 message = client.messages.create(
     model="anthropic.claude-mythos-5",
     max_tokens=2048,
-    output_config={"effort": "high"},  # adaptive thinking always on; tune via effort
+    output_config={"effort": "high"},  # adaptive always on; 示例值，取值/默认待确认
     messages=[
         {
             "role": "user",

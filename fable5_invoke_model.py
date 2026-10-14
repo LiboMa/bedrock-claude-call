@@ -4,6 +4,7 @@ Ref: https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-c
 
 Use InvokeModel when you want the raw Anthropic Messages request/response shape
 over the classic bedrock-runtime endpoint (SigV4 / AWS_BEARER_TOKEN_BEDROCK).
+Requires the account data retention mode `aws_review` (see fable5_converse.py).
 """
 
 import json
@@ -22,7 +23,7 @@ response = client.invoke_model(
             "max_tokens": 4096,
             # Optional on Fable 5 - adaptive thinking is always on.
             # "thinking": {"type": "adaptive"},
-            "output_config": {"effort": "medium"},
+            "output_config": {"effort": "medium"},  # 示例值，取值/默认待确认
             "messages": [
                 {
                     "role": "user",
