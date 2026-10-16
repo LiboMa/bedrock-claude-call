@@ -355,3 +355,7 @@ A: 本仓库的 Claude 示例走 Anthropic Messages API（runtime 的 `/anthropi
 - [Bedrock API Key 管理](https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys.html)
 - [区域可用性](https://docs.aws.amazon.com/bedrock/latest/userguide/models-region-compatibility.html)
 - [Amazon Bedrock 定价](https://aws.amazon.com/bedrock/pricing/)
+
+## Octopus 自动发布验收
+
+本节是 KiroCrew Octopus 平台自动发布（D47）流程的验收改动，用于确认候选改动可被自动提交并发布。
