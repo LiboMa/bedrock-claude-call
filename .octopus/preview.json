@@ -22,6 +22,16 @@
       "entry": false,
       "long_running": false,
       "requires": "AWS credentials with Bedrock model access (default credential chain, e.g. AWS_PROFILE / AWS_REGION)"
+    },
+    {
+      "name": "usage-docs",
+      "command": "python -m http.server $PORT --bind 127.0.0.1 --directory docs",
+      "cwd": ".",
+      "port": "$PORT",
+      "entry": false,
+      "long_running": true,
+      "path": "/usage.html",
+      "description": "HTML 使用说明（静态页 docs/usage.html，也可直接用浏览器打开该文件）"
     }
   ]
 }

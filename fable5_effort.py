@@ -49,8 +49,8 @@ response = client.converse(
 
 for block in response["output"]["message"]["content"]:
     if "reasoningContent" in block:
-        # Thinking text is omitted by default on Fable 5; the block still
-        # appears (with a signature) so multi-turn passback works.
+        # Whether Fable 5 returns thinking text or only a signed block is
+        # not stated on the model card [待确认] - print it only if present.
         rc = block["reasoningContent"].get("reasoningText", {})
         if rc.get("text"):
             print(f"--- thinking ---\n{rc['text']}\n----------------")

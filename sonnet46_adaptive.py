@@ -37,7 +37,7 @@ try:
         additionalModelRequestFields={
             # Unverified thinking shape for Sonnet 4.6 (model card: "Reasoning: Supported" only).
             "thinking": {"type": "adaptive"},
-            "output_config": {"effort": "medium"},
+            "output_config": {"effort": "medium"},  # 示例值，取值/默认待确认
         },
     )
 except Exception as e:

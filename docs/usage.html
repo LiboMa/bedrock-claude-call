@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amazon Bedrock Claude 示例 · 使用说明</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --border: #d1d9e0;
+    --code-bg: #f6f8fa; --accent: #0969da; --warn-bg: #fff8c5; --warn-border: #d4a72c;
+    --ok: #1a7f37; --no: #cf222e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --border: #3d444d;
+      --code-bg: #161b22; --accent: #4493f8; --warn-bg: #2e2a1a; --warn-border: #9e6a03;
+      --ok: #3fb950; --no: #f85149;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .layout { display: flex; max-width: 1180px; margin: 0 auto; }
+  nav {
+    position: sticky; top: 0; align-self: flex-start; width: 220px; flex-shrink: 0;
+    padding: 28px 16px; max-height: 100vh; overflow-y: auto; font-size: 14px;
+  }
+  nav a { display: block; padding: 4px 8px; color: var(--muted); text-decoration: none; border-radius: 6px; }
+  nav a:hover { color: var(--fg); background: var(--code-bg); }
+  main { flex: 1; min-width: 0; padding: 28px 32px 80px; }
+  h1 { font-size: 28px; margin: 0 0 8px; }
+  h2 { font-size: 21px; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 24px 0 8px; }
+  a { color: var(--accent); }
+  p.lead { color: var(--muted); margin-top: 0; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px;
+         background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  pre { position: relative; background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+        padding: 14px 16px; overflow-x: auto; }
+  pre code { background: none; padding: 0; }
+  .copy { position: absolute; top: 8px; right: 8px; font-size: 12px; padding: 2px 8px; cursor: pointer;
+          border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--muted); }
+  .copy:hover { color: var(--fg); }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 16px; font-size: 14px; display: block; overflow-x: auto; }
+  th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); white-space: nowrap; }
+  .note { background: var(--warn-bg); border-left: 4px solid var(--warn-border); padding: 10px 14px; border-radius: 6px; margin: 12px 0; }
+  .steps { counter-reset: step; list-style: none; padding: 0; }
+  .steps > li { counter-increment: step; position: relative; padding-left: 40px; margin-bottom: 14px; }
+  .steps > li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 26px; height: 26px;
+                        border-radius: 50%; background: var(--accent); color: #fff; text-align: center;
+                        font-size: 13px; line-height: 26px; font-weight: 600; }
+  .ok { color: var(--ok); font-weight: 600; } .no { color: var(--no); font-weight: 600; }
+  input[type=search] { width: 100%; max-width: 360px; padding: 6px 10px; margin: 4px 0 8px; font-size: 14px;
+                       border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); }
+  @media (max-width: 860px) { nav { display: none; } main { padding: 20px 16px 60px; } }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav>
+  <a href="#overview">概览</a>
+  <a href="#install">1. 安装依赖</a>
+  <a href="#auth">2. 配置认证</a>
+  <a href="#retention">3. 数据保留模式</a>
+  <a href="#run">4. 运行示例</a>
+  <a href="#test">5. 运行测试</a>
+  <a href="#examples">示例文件清单</a>
+  <a href="#ids">Model ID 速查</a>
+  <a href="#endpoints">端点与 SDK</a>
+  <a href="#faq">常见报错</a>
+  <a href="#links">参考链接</a>
+</nav>
+<main>
+
+<h1 id="overview">Amazon Bedrock Claude 示例 · 使用说明</h1>
+<p class="lead">本页说明如何安装、认证、运行本仓库的 Claude on Amazon Bedrock 示例脚本与测试入口。模型能力细节（thinking / effort / 采样 / 缓存矩阵）以仓库根目录 <code>README.md</code> 为准；内容依据 AWS 官方 <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards-anthropic.html">Anthropic 模型卡总览</a>（抓取快照 2026-10-14，事实清单见 <code>.octopus/model-facts.md</code>）。</p>
+
+<div class="note">标注 <b>【待确认】</b> 的内容表示模型卡未写明、本仓库无法核实；对应示例只演示一种写法并在失败时打印错误，<b>不代表该写法已被官方确认</b>。AWS 页面会持续更新，以官方页面为准。</div>
+
+<p>前置条件：Python 3（建议使用虚拟环境）、可访问 Amazon Bedrock 的 AWS 账号，并在目标 Region 开通对应模型访问。</p>
+
+<h2 id="install">1. 安装依赖</h2>
+<pre><code>python -m venv .venv &amp;&amp; source .venv/bin/activate   # 可选
+pip install -r requirements.txt   # boto3 + anthropic[bedrock] + aws-bedrock-token-generator
+# 或 ./setup.sh（安装依赖并打印后续配置提示）</code></pre>
+<table>
+  <tr><th>依赖</th><th>最低版本</th><th>用途</th></tr>
+  <tr><td><code>boto3</code></td><td>1.43.0</td><td>bedrock-runtime 上的 Converse / InvokeModel</td></tr>
+  <tr><td><code>anthropic[bedrock]</code></td><td>0.109.0</td><td>Anthropic Messages API（runtime <code>/anthropic</code> 与 Mantle）</td></tr>
+  <tr><td><code>aws-bedrock-token-generator</code></td><td>1.1.0</td><td>从 AWS 凭证链生成短期 Bedrock API Key</td></tr>
+</table>
+
+<h2 id="auth">2. 配置认证（二选一）</h2>
+<pre><code># 方式 A：Bedrock API Key（控制台 → API Keys → 创建长期 Key）
+export AWS_BEARER_TOKEN_BEDROCK="&lt;你的 Bedrock API Key&gt;"
+
+# 方式 B：标准 AWS 凭证链（~/.aws/credentials、AWS_PROFILE 等），无需额外配置
+export AWS_REGION=us-east-1   # 示例默认使用 us-east-1</code></pre>
+<p>bedrock-runtime 上的 Messages API 示例（如 <code>fable51_messages_runtime.py</code>）用 <code>aws_bedrock_token_generator.provide_token()</code> 从凭证链生成短期 Key。</p>
+
+<h2 id="retention">3. 数据保留模式一次性设置（按 Region）</h2>
+<table>
+  <tr><th>模型</th><th>需要的模式</th><th>命令</th></tr>
+  <tr><td>Fable 5 / Fable 5.1</td><td><code>aws_review</code></td><td><code>aws bedrock put-account-data-retention --mode aws_review</code></td></tr>
+  <tr><td>Mythos 5 / Mythos 5.1</td><td><code>provider_data_share</code></td><td><code>aws bedrock put-account-data-retention --mode provider_data_share</code></td></tr>
+</table>
+<p>注意 Fable 5 需要的是 <code>aws_review</code>，<b>不是</b> <code>provider_data_share</code>；<code>provider_data_share</code> 仅适用于 Mythos 5 / 5.1。Mythos 5.1 还需通过 Anthropic trusted access 获得访问资格（面向经审核的组织）。</p>
+
+<h2 id="run">4. 运行示例</h2>
+<ol class="steps">
+  <li>每个示例都是独立脚本，直接运行即可，例如：
+<pre><code>python claude55_family.py     # Haiku / Sonnet / Opus 5.5，Converse
+python fable5_converse.py     # Fable 5 基础调用
+python fable5_streaming.py    # Fable 5 流式
+python opus48_all_apis.py     # Opus 4.8 四种 API 对照</code></pre></li>
+  <li>受限或【待确认】的调用（Mythos、4.x thinking 写法、更早模型）失败时打印错误而不抛出，可据此判断是账号未开通还是参数问题。</li>
+  <li>Fable / Mythos 系列可能返回 <code>stop_reason: "refusal"</code>（双用途分类器拦截），示例会按正常分支打印 <code>stop_details</code>。</li>
+</ol>
+
+<h3>最小可运行代码（Converse）</h3>
+<pre><code>import boto3
+
+client = boto3.client("bedrock-runtime", region_name="us-east-1")
+response = client.converse(
+    modelId="us.anthropic.claude-sonnet-5-5",
+    messages=[{"role": "user", "content": [{"text": "介绍一下 Amazon Bedrock。"}]}],
+    inferenceConfig={"maxTokens": 2048},
+)
+for block in response["output"]["message"]["content"]:
+    if "text" in block:
+        print(block["text"])</code></pre>
+
+<h3>Mantle + Anthropic SDK（裸 ID）</h3>
+<pre><code>from anthropic import AnthropicBedrockMantle
+
+client = AnthropicBedrockMantle(aws_region="us-east-1")
+message = client.messages.create(
+    model="anthropic.claude-opus-5-5",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Hello, Claude"}],
+)
+for block in message.content:
+    if block.type == "text":
+        print(block.text)</code></pre>
+
+<h2 id="test">5. 运行测试</h2>
+<pre><code>python test_all.py --syntax-only   # 仅语法检查 18 个示例脚本，不联网、不需要凭证
+python test_all.py                 # 语法检查 + 27 项实测（覆盖全部 19 个模型，需 AWS 凭证与模型访问）</code></pre>
+<p>输出含义：</p>
+<table>
+  <tr><th>结果</th><th>含义</th></tr>
+  <tr><td><span class="ok">OK</span> / <span class="ok">PASS</span></td><td>语法通过 / 实测调用成功</td></tr>
+  <tr><td>SKIP</td><td>受限模型（Mythos 5 / 5.1）、更早模型（Opus 4.1、Sonnet 4、Claude 3 Haiku），或识别为账号/路由访问限制（模型未在该账号/Region 开通、IAM 缺少对应 bedrock 权限）的失败，不计入整体失败</td></tr>
+  <tr><td><span class="no">FAIL</span></td><td>其他错误；不中断后续测试，但最终退出码非 0</td></tr>
+</table>
+<p>实测统一使用 <code>max_tokens=1024</code>，为默认开启的 thinking 留出额度；effort 只对模型卡写明取值的 5.5 家族传 <code>low</code>。</p>
+
+<h2 id="examples">示例文件清单</h2>
+<input type="search" id="filter" placeholder="按文件名或模型过滤，例如 fable、opus、mantle">
+<table id="examples-table">
+  <tr><th>文件</th><th>模型</th><th>内容</th></tr>
+  <tr><td><code>claude55_family.py</code></td><td>Haiku 5.5 / Sonnet 5.5 / Opus 5.5</td><td>Converse；默认 adaptive、Haiku 关闭 thinking（effort high）、Sonnet xhigh、Opus max effort</td></tr>
+  <tr><td><code>fable51_messages_runtime.py</code></td><td>Fable 5.1</td><td>bedrock-runtime 上的 Messages API（<code>Anthropic</code> + <code>provide_token</code>）流式 + refusal 处理</td></tr>
+  <tr><td><code>mythos51_converse.py</code></td><td>Mythos 5.1</td><td>仅演示 Converse（runtime API 行【待确认】，受限访问，失败只报告）</td></tr>
+  <tr><td><code>opus5_sonnet5_converse.py</code></td><td>Opus 5 / Sonnet 5</td><td>省略 thinking 即开启 adaptive、显式 disabled、Opus 5 关闭时 effort high；Sonnet 5 的 effort low 为示例值（取值/默认【待确认】）</td></tr>
+  <tr><td><code>fable5_converse.py</code></td><td>Fable 5</td><td>Converse 基础调用</td></tr>
+  <tr><td><code>fable5_effort.py</code></td><td>Fable 5</td><td>adaptive thinking（始终开启）+ effort（所传 effort 为示例值，取值/默认【待确认】）</td></tr>
+  <tr><td><code>fable5_streaming.py</code></td><td>Fable 5</td><td>ConverseStream 流式</td></tr>
+  <tr><td><code>fable5_tool_calling.py</code></td><td>Fable 5</td><td>工具调用 + 完整 agentic loop</td></tr>
+  <tr><td><code>fable5_invoke_model.py</code></td><td>Fable 5</td><td>InvokeModel 原生请求体 + refusal 处理（effort 为示例值，【待确认】）</td></tr>
+  <tr><td><code>fable5_mantle.py</code></td><td>Fable 5</td><td>Mantle 端点 + Anthropic SDK 流式（effort 为示例值，【待确认】）</td></tr>
+  <tr><td><code>mythos5_mantle.py</code></td><td>Mythos 5</td><td>仅 Mantle 通道（Preview；effort 为示例值，【待确认】）</td></tr>
+  <tr><td><code>opus48_all_apis.py</code></td><td>Opus 4.8</td><td>Converse / Invoke / runtime Messages / Mantle Messages 四路对照（adaptive，不传采样参数）</td></tr>
+  <tr><td><code>opus46_47_converse.py</code></td><td>Opus 4.6 + 4.7</td><td>Opus 4.6（thinking 写法未经核实）与 Opus 4.7（仅 adaptive）对照</td></tr>
+  <tr><td><code>opus45_converse.py</code></td><td>Opus 4.5</td><td>旧式日期 ID + enabled / budget_tokens（未经核实的写法）</td></tr>
+  <tr><td><code>sonnet46_adaptive.py</code></td><td>Sonnet 4.6</td><td>adaptive + effort（未经核实的写法）</td></tr>
+  <tr><td><code>sonnet45_extended_thinking.py</code></td><td>Sonnet 4.5</td><td>enabled / budget_tokens（未经核实的写法）</td></tr>
+  <tr><td><code>haiku45_converse.py</code></td><td>Haiku 4.5</td><td>快速分类场景（runtime 推理档 ID，不传 thinking）</td></tr>
+  <tr><td><code>legacy_models_converse.py</code></td><td>Opus 4.1 / Sonnet 4 / Claude 3 Haiku</td><td>更早模型 Converse 基础调用（仅 <code>maxTokens</code>，失败只报告不中断）</td></tr>
+  <tr><td><code>test_all.py</code></td><td>全部</td><td>18 个脚本语法检查 + 27 项实测（覆盖全部 19 个模型）</td></tr>
+</table>
+
+<h2 id="ids">Model ID 速查</h2>
+<p>bedrock-runtime 上在基础 ID 前加推理档前缀（<code>us.</code> / <code>eu.</code> / <code>global.</code> 等，各模型可用前缀见 README）；Mantle 一律用不带前缀的裸 ID。</p>
+<table>
+  <tr><th>模型</th><th>基础 Model ID</th><th>runtime 示例 ID</th></tr>
+  <tr><td>Claude Haiku 5.5</td><td><code>anthropic.claude-haiku-5-5</code></td><td><code>us.anthropic.claude-haiku-5-5</code></td></tr>
+  <tr><td>Claude Sonnet 5.5</td><td><code>anthropic.claude-sonnet-5-5</code></td><td><code>us.anthropic.claude-sonnet-5-5</code></td></tr>
+  <tr><td>Claude Opus 5.5</td><td><code>anthropic.claude-opus-5-5</code></td><td><code>us.anthropic.claude-opus-5-5</code></td></tr>
+  <tr><td>Claude Fable 5.1</td><td><code>anthropic.claude-fable-5-1</code></td><td><code>us.anthropic.claude-fable-5-1</code></td></tr>
+  <tr><td>Claude Mythos 5.1（受限）</td><td><code>anthropic.claude-mythos-5-1</code></td><td><code>us.anthropic.claude-mythos-5-1</code></td></tr>
+  <tr><td>Claude Opus 5</td><td><code>anthropic.claude-opus-5</code></td><td><code>us.anthropic.claude-opus-5</code></td></tr>
+  <tr><td>Claude Sonnet 5</td><td><code>anthropic.claude-sonnet-5</code></td><td><code>us.anthropic.claude-sonnet-5</code></td></tr>
+  <tr><td>Claude Mythos 5（仅 Mantle）</td><td><code>anthropic.claude-mythos-5</code></td><td>—（Mantle 裸 ID）</td></tr>
+  <tr><td>Claude Fable 5</td><td><code>anthropic.claude-fable-5</code></td><td><code>us.anthropic.claude-fable-5</code></td></tr>
+  <tr><td>Claude Opus 4.8</td><td><code>anthropic.claude-opus-4-8</code></td><td><code>us.anthropic.claude-opus-4-8</code></td></tr>
+  <tr><td>Claude Opus 4.7</td><td><code>anthropic.claude-opus-4-7</code></td><td><code>us.anthropic.claude-opus-4-7</code></td></tr>
+  <tr><td>Claude Sonnet 4.6</td><td><code>anthropic.claude-sonnet-4-6</code></td><td><code>us.anthropic.claude-sonnet-4-6</code></td></tr>
+  <tr><td>Claude Opus 4.6</td><td><code>anthropic.claude-opus-4-6-v1</code></td><td><code>us.anthropic.claude-opus-4-6-v1</code></td></tr>
+  <tr><td>Claude Opus 4.5</td><td><code>anthropic.claude-opus-4-5-20251101-v1:0</code></td><td><code>us.anthropic.claude-opus-4-5-20251101-v1:0</code></td></tr>
+  <tr><td>Claude Haiku 4.5</td><td>mantle：<code>anthropic.claude-haiku-4-5</code></td><td><code>us.anthropic.claude-haiku-4-5-20251001-v1:0</code>（必须用推理档 ID）</td></tr>
+  <tr><td>Claude Sonnet 4.5</td><td><code>anthropic.claude-sonnet-4-5-20250929-v1:0</code></td><td><code>us.anthropic.claude-sonnet-4-5-20250929-v1:0</code></td></tr>
+  <tr><td>Claude Opus 4.1</td><td><code>anthropic.claude-opus-4-1-20250805-v1:0</code></td><td><code>us.anthropic.claude-opus-4-1-20250805-v1:0</code>（无 <code>global.</code>）</td></tr>
+  <tr><td>Claude Sonnet 4</td><td><code>anthropic.claude-sonnet-4-20250514-v1:0</code></td><td><code>us.anthropic.claude-sonnet-4-20250514-v1:0</code></td></tr>
+  <tr><td>Claude 3 Haiku</td><td><code>anthropic.claude-3-haiku-20240307-v1:0</code></td><td><code>us.anthropic.claude-3-haiku-20240307-v1:0</code>（另有 In-Region 裸 ID）</td></tr>
+</table>
+
+<h2 id="endpoints">端点与 SDK</h2>
+<table>
+  <tr><th></th><th>bedrock-runtime（经典）</th><th>bedrock-mantle（新）</th></tr>
+  <tr><td>API</td><td>Converse / InvokeModel / Anthropic Messages（视模型而定）</td><td><b>仅</b> Anthropic Messages API</td></tr>
+  <tr><td>SDK</td><td><code>boto3</code>（Converse / Invoke）；<code>anthropic</code>（Messages，<code>base_url=.../anthropic</code>）</td><td><code>anthropic[bedrock]</code>（<code>AnthropicBedrockMantle</code>）</td></tr>
+  <tr><td>URL</td><td><code>https://bedrock-runtime.{region}.amazonaws.com</code></td><td><code>https://bedrock-mantle.{region}.api.aws/anthropic/v1/messages</code></td></tr>
+  <tr><td>Model ID</td><td>推理档 ID（<code>us.</code> / <code>global.</code> 等前缀）</td><td>裸 ID（不带任何前缀）</td></tr>
+</table>
+<p>各模型具体支持哪些 API 见 README「两种端点、三种 API」支持矩阵。</p>
+
+<h2 id="faq">常见报错</h2>
+<table>
+  <tr><th>现象</th><th>处理</th></tr>
+  <tr><td><code>ValidationException: ... model identifier is invalid</code></td><td>检查 ID 代次：4.5 及更早要完整日期 + <code>-v1:0</code>；Opus 4.6 要 <code>-v1</code>；Opus 4.7+ 和 5 代用干净 ID。runtime 加推理档前缀；Mantle 用裸 ID。</td></tr>
+  <tr><td>thinking 参数被拒（400）</td><td>Opus 4.7 / 4.8 仅支持 <code>{"type": "adaptive"}</code>；Opus 5.5、Fable / Mythos 5.x 不要传 <code>disabled</code>；其他 4.x 写法【待确认】，可先不传 <code>thinking</code>。</td></tr>
+  <tr><td>Opus 5 / Haiku 5.5 关闭 thinking 后 effort 报错</td><td>关闭 thinking 时 effort 上限为 <code>high</code>。</td></tr>
+  <tr><td>Fable 5 / 5.1 报数据保留相关错误</td><td>执行 <code>aws bedrock put-account-data-retention --mode aws_review</code>（每个 Region 一次）。</td></tr>
+  <tr><td>Mythos 5.1 用 Mantle 调不通</td><td>Mythos 5.1 模型卡端点只列 bedrock-runtime，请用推理档 ID；Mythos 5 则只能走 Mantle 裸 ID。</td></tr>
+  <tr><td>返回 <code>stop_reason: "refusal"</code></td><td>双用途内容分类器拦截，按正常分支处理并查看 <code>stop_details</code>。</td></tr>
+</table>
+
+<h2 id="links">参考链接</h2>
+<ul>
+  <li><a href="https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards-anthropic.html">Anthropic 模型卡总览</a></li>
+  <li><a href="https://docs.aws.amazon.com/bedrock/latest/userguide/data-retention.html">数据保留</a> / <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys.html">Bedrock API Key 管理</a> / <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/models-region-compatibility.html">区域可用性</a></li>
+  <li><a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">Prompt 缓存</a> / <a href="https://aws.amazon.com/bedrock/pricing/">Amazon Bedrock 定价</a></li>
+  <li>完整模型矩阵与各模型卡链接：仓库根目录 <code>README.md</code></li>
+</ul>
+
+</main>
+</div>
+<script>
+  // 代码块复制按钮
+  document.querySelectorAll("pre").forEach(function (pre) {
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "复制";
+    btn.addEventListener("click", function () {
+      navigator.clipboard.writeText(pre.querySelector("code").innerText).then(function () {
+        btn.textContent = "已复制";
+        setTimeout(function () { btn.textContent = "复制"; }, 1500);
+      });
+    });
+    pre.appendChild(btn);
+  });
+  // 示例清单过滤
+  document.getElementById("filter").addEventListener("input", function (e) {
+    var q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll("#examples-table tr").forEach(function (tr, i) {
+      if (i === 0) return;
+      tr.style.display = !q || tr.textContent.toLowerCase().indexOf(q) !== -1 ? "" : "none";
+    });
+  });
+</script>
+</body>
+</html>

@@ -178,6 +178,29 @@ SKIP_ON_FAILURE = {
 }
 
 
+def access_skip_reason(msg: str) -> str | None:
+    """Classify a failure as an account/route ACCESS condition (-> SKIP) rather
+    than a code/model defect (-> FAIL).
+
+    A model/route can be unreachable on a given account for reasons unrelated to
+    this repo's correctness: the model is not enabled on that account/Region/route
+    (404 "does not exist" / ResourceNotFound), or the caller's IAM identity lacks a
+    specific permission (e.g. bedrock:CallWithBearerToken for the runtime Messages
+    path). Per the acceptance criteria, such restricted targets SKIP instead of
+    failing the whole suite. Genuine bugs surface as other error signatures.
+    """
+    low = msg.lower()
+    if "does not exist" in low or "resourcenotfound" in low or "not_found" in low:
+        return "model/route not enabled on this account/Region"
+    if "callwithbearertoken" in low or (
+        "not authorized to perform" in low and "bedrock:" in low
+    ):
+        return "IAM identity lacks the required bedrock permission for this route"
+    if "accessdenied" in low or "permission_error" in low:
+        return "access denied for this model/route on this account"
+    return None
+
+
 def live_tests() -> bool:
     print("\n=== Live API tests ===\n")
     targets = [
@@ -227,8 +250,12 @@ def live_tests() -> bool:
             ok, msg = fn(model)
         except Exception as e:
             ok, msg = False, f"{type(e).__name__}: {e}"
-        # Restricted (Mythos) and older models don't fail the whole suite.
+        # Restricted (Mythos) and older models don't fail the whole suite...
         skip = next((why for key, why in SKIP_ON_FAILURE.items() if key in model), None)
+        # ...nor do account/route access conditions (model not enabled on this
+        # account/Region, or missing IAM permission for a specific route).
+        if not ok and not skip:
+            skip = access_skip_reason(msg)
         if not ok and skip:
             print(f"SKIP ({skip}) {msg[:100]}")
             continue
