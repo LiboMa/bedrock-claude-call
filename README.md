@@ -6,6 +6,8 @@
 >
 > 标注 **【待确认】** 的内容表示模型卡未写明、本仓库无法核实；对应示例只演示一种写法并在失败时打印错误，**不代表该写法已被官方确认**。
 
+图文版使用说明（安装 / 认证 / 运行示例 / 测试 / Model ID 速查）：用浏览器打开 `docs/usage.html`。
+
 姊妹仓库：[bedrock-openai-gpt](https://github.com/LiboMa/bedrock-openai-gpt)。
 
 ## 模型总览
@@ -75,7 +77,7 @@
 
 1. **干净无日期 ID**（5.5 家族、Fable / Mythos 5.x、Opus / Sonnet 5、Opus 4.7 / 4.8、Sonnet 4.6）：`anthropic.claude-opus-5-5`、`anthropic.claude-fable-5-1`、`anthropic.claude-opus-4-8`、`anthropic.claude-sonnet-4-6`
 2. **Opus 4.6**：带 `-v1` 后缀 — `anthropic.claude-opus-4-6-v1`
-3. **Opus 4.5 及更早**：带日期 + `-v1:0` 后缀 — `anthropic.claude-opus-4-5-20251101-v1:0`、`anthropic.claude-haiku-4-5-20251001-v1:0`
+3. **Opus 4.5 及更早**：带日期 + `-v1:0` 后缀 — `anthropic.claude-opus-4-5-20251101-v1:0`、`anthropic.claude-sonnet-4-5-20250929-v1:0`
 
 > Haiku 4.5 特例：runtime 裸 ID 不支持按需吞吐，必须用带日期的推理档 ID（`us.anthropic.claude-haiku-4-5-20251001-v1:0`）；Mantle 裸 ID 不带日期（`anthropic.claude-haiku-4-5`）。
 
@@ -236,8 +238,11 @@ response = client.converse(
 # opus45_converse.py / sonnet45_extended_thinking.py（未经核实）
 additionalModelRequestFields={"thinking": {"type": "enabled", "budget_tokens": 2048}}
 
-# sonnet46_adaptive.py / opus46_47_converse.py 中的 Opus 4.6（未经核实）
+# sonnet46_adaptive.py（未经核实；effort 为示例值，取值/默认【待确认】）
 additionalModelRequestFields={"thinking": {"type": "adaptive"}, "output_config": {"effort": "medium"}}
+
+# opus46_47_converse.py 中的 Opus 4.6（未经核实）
+additionalModelRequestFields={"thinking": {"type": "adaptive"}}
 
 # Opus 4.7 / 4.8：模型卡写明仅 adaptive
 additionalModelRequestFields={"thinking": {"type": "adaptive"}}
@@ -299,7 +304,7 @@ python test_all.py               # 语法 + 全模型实测（需 AWS 凭证与�
 python test_all.py --syntax-only # 仅语法检查（不联网）
 ```
 
-`test_all.py` 中，受限模型（Mythos 5 / 5.1；Mythos 5.1 的 runtime API 行也【待确认】）和更早模型（Opus 4.1、Sonnet 4、Claude 3 Haiku，生命周期【待确认】）调用失败记为 SKIP，不会让整体失败；其他模型未开通时记为 FAIL，但不中断后续测试。实测统一使用 `max_tokens=1024`，为默认开启的 thinking 留出额度；4.x（Opus 4.6 / 4.5、Sonnet 4.x、Haiku 4.5）实测不传 thinking；effort 只对模型卡写明取值的 5.5 家族传 `low`，Fable 5 与 Opus 4.7 的 adaptive 探测不传 effort。
+`test_all.py` 中，受限模型（Mythos 5 / 5.1；Mythos 5.1 的 runtime API 行也【待确认】）和更早模型（Opus 4.1、Sonnet 4、Claude 3 Haiku，生命周期【待确认】）调用失败记为 SKIP，不会让整体失败；其他模型若因账号访问条件失败（模型 / 路由未在该账号或 Region 开通、IAM 缺少对应 `bedrock:` 权限、AccessDenied）也记为 SKIP，其余错误记为 FAIL，但不中断后续测试。实测统一使用 `max_tokens=1024`，为默认开启的 thinking 留出额度；4.x（Opus 4.6 / 4.5、Sonnet 4.x、Haiku 4.5）实测不传 thinking；effort 只对模型卡写明取值的 5.5 家族传 `low`，Fable 5 与 Opus 4.7 的 adaptive 探测不传 effort。
 
 ## 模型怎么选？
 
